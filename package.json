@@ -1,0 +1,12 @@
+{
+  "name": "joy-bor",
+  "version": "1.0.0",
+  "description": "JoyBor Tashkent - Toshkent avtobuslari yuklanishi va bo'sh o'rinlar radari",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 4321"
+  },
+  "dependencies": {
+    "@vercel/blob": "^0.27.1"
+  }
+}
