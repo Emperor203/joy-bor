@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JoyBor Tashkent — Toshkent avtobuslari yuklanishi</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Google Fonts (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            },
+            crowdLow: '#10b981',
+            crowdMed: '#f59e0b',
+            crowdHigh: '#ef4444',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+      z-index: 10;
+    }
+    .leaflet-control-zoom, .leaflet-control-attribution {
+      display: none !important;
+    }
+    /* Pulse effect on bus markers */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 0.2; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+    .pulse-crowd-high::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 9999px;
+      background-color: rgba(239, 68, 68, 0.4);
+      animation: pulse-ring 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+      z-index: -1;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-800 antialiased">
+
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Top Floating Header -->
+  <header class="absolute top-4 left-4 right-4 z-20 flex flex-col gap-2 max-w-md mx-auto pointer-events-none">
+    <div class="bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border border-slate-100 flex items-center justify-between pointer-events-auto">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+          <i data-lucide="bus" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-lg font-black tracking-tight text-slate-900">Joy<span class="text-emerald-600">Bor</span></h1>
+            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Toshkent</span>
+          </div>
+          <p class="text-[11px] text-slate-500 font-medium" id="sub-header-text">Avtobuslarda bo'sh joylar radari</p>
+        </div>
+      </div>
+
+      <!-- Language & City Controls -->
+      <div class="flex items-center gap-1.5">
+        <button id="lang-btn" onclick="toggleLang()" class="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+          UZ 🇺🇿
+        </button>
+        <button onclick="recenterMap()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Mening joylashuvim">
+          <i data-lucide="crosshair" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Smart Recommendation Banner (AI Advice) -->
+    <div id="smart-banner" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-3 rounded-2xl shadow-lg border border-amber-300 pointer-events-auto flex items-start gap-3 transition-all duration-300">
+      <div class="bg-white/20 p-2 rounded-xl mt-0.5">
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-100"></i>
+      </div>
+      <div class="flex-1 text-xs">
+        <div class="font-extrabold flex items-center justify-between">
+          <span id="banner-title">⚡ Aqlli maslahat</span>
+          <span class="text-[10px] opacity-80" id="banner-time">Hozir</span>
+        </div>
+        <p class="mt-0.5 opacity-95 leading-relaxed" id="banner-content">
+          <strong>28-avtobus</strong> tiqilinch (95% 🔴, 2 daq). Lekin 6 daqiqadan so'ng keladigan 28-avtobus <strong>bo'sh (25% 🟢)</strong> — kutishni tavsiya qilamiz!
+        </p>
+      </div>
+      <button onclick="dismissBanner()" class="text-white/60 hover:text-white p-1">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <!-- Quick Route Chips Filter -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 pointer-events-auto custom-scrollbar">
+      <button onclick="filterRoute('ALL')" class="route-chip active bg-slate-900 text-white font-bold text-xs px-3.5 py-1.5 rounded-full shadow-md transition flex items-center gap-1 shrink-0" data-route="ALL">
+        <span>Barchasi</span>
+      </button>
+      <button onclick="filterRoute(28)" class="route-chip bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs px-3 py-1.5 rounded-full shadow-sm border border-slate-200 transition shrink-0" data-route="28">
+        № 28
+      </button>
+      <button onclick="filterRoute(51)" class="route-chip bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs px-3 py-1.5 rounded-full shadow-sm border border-slate-200 transition shrink-0" data-route="51">
+        № 51
+      </button>
+      <button onclick="filterRoute(14)" class="route-chip bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs px-3 py-1.5 rounded-full shadow-sm border border-slate-200 transition shrink-0" data-route="14">
+        № 14
+      </button>
+      <button onclick="filterRoute(93)" class="route-chip bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs px-3 py-1.5 rounded-full shadow-sm border border-slate-200 transition shrink-0" data-route="93">
+        № 93
+      </button>
+      <button onclick="filterRoute(24)" class="route-chip bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs px-3 py-1.5 rounded-full shadow-sm border border-slate-200 transition shrink-0" data-route="24">
+        № 24
+      </button>
+    </div>
+  </header>
+
+  <!-- Floating "I'm on a bus" Report Button -->
+  <div class="absolute bottom-28 right-4 z-20">
+    <button onclick="openReportModal()" class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-sm px-4 py-3 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition transform border-2 border-white/40">
+      <i data-lucide="hand-metal" class="w-5 h-5"></i>
+      <span id="btn-report-label">Men avtobusdaman!</span>
+    </button>
+  </div>
+
+  <!-- Bottom Sheet / Nearby Buses Drawer -->
+  <div id="bottom-sheet" class="absolute bottom-0 left-0 right-0 z-20 max-w-lg mx-auto bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-slate-200 transition-transform duration-300">
+    <!-- Drag Handle -->
+    <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-2.5 cursor-pointer" onclick="toggleDrawer()"></div>
+    
+    <div class="px-5 pb-5">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900" id="drawer-title">Yaqin atrofdagi bekat: <span class="text-emerald-600 font-extrabold">Amir Temur Xiyoboni</span></h2>
+          <p class="text-xs text-slate-500" id="drawer-sub">Avtobuslarning to'lalik darajasi real vaqtda</p>
+        </div>
+        <div class="flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span>Online</span>
+        </div>
+      </div>
+
+      <!-- Bus Arrivals List -->
+      <div class="space-y-2.5 max-h-56 overflow-y-auto custom-scrollbar pr-1" id="bus-list">
+        <!-- Dynamically generated bus cards -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bus Detail Modal (when clicked on a bus) -->
+  <div id="bus-modal" class="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
+    <div class="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-6 duration-200">
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div id="modal-route-badge" class="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            28
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="modal-route-name" class="font-extrabold text-lg text-slate-900">№ 28 Yo'nalish</h3>
+              <span id="modal-bus-model" class="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">Yutong E12</span>
+            </div>
+            <p id="modal-destination" class="text-xs text-slate-500 font-medium">Ipak Yo'li metrosi ➔ Chorsu bozori</p>
+          </div>
+        </div>
+        <button onclick="closeBusModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Occupancy Visualizer Gauge -->
+      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-4">
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="text-xs font-bold text-slate-600" id="modal-occupancy-label">Avtobus to'laligi:</span>
+          <span id="modal-occupancy-badge" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-red-100 text-red-600">
+            92% • Tiqilinch
+          </span>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="w-full h-3.5 bg-slate-200 rounded-full overflow-hidden flex">
+          <div id="modal-progress-bar" class="h-full bg-red-500 rounded-full transition-all duration-500" style="width: 92%"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+          <div class="bg-white p-2.5 rounded-xl border border-slate-200/70 shadow-sm">
+            <span class="text-[10px] text-slate-400 block font-semibold" id="modal-stat-seats">Bo'sh o'rinlar</span>
+            <span id="modal-free-seats" class="text-base font-extrabold text-slate-800">2 ta</span>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl border border-slate-200/70 shadow-sm">
+            <span class="text-[10px] text-slate-400 block font-semibold" id="modal-stat-eta">Yetib kelishi</span>
+            <span id="modal-eta" class="text-base font-extrabold text-emerald-600">3 daqiqa</span>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl border border-slate-200/70 shadow-sm">
+            <span class="text-[10px] text-slate-400 block font-semibold" id="modal-stat-votes">Odamlar tasdiqladi</span>
+            <span id="modal-votes" class="text-base font-extrabold text-indigo-600">14 kishi</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Bus Salon Diagram Preview -->
+      <div class="mb-5">
+        <div class="flex items-center justify-between text-xs text-slate-500 font-semibold mb-2">
+          <span id="modal-salon-title">Salondagi holat (Vizual):</span>
+          <span class="text-[11px] text-emerald-600 font-bold" id="modal-salon-rec">Keyingisi bo'shroq!</span>
+        </div>
+        <div class="h-14 bg-slate-100 rounded-xl border border-slate-200 p-2 flex items-center justify-between relative overflow-hidden">
+          <!-- Driver -->
+          <div class="w-8 h-full bg-slate-300 rounded flex flex-col items-center justify-center text-[9px] font-bold text-slate-600">
+            <i data-lucide="user" class="w-3 h-3 mb-0.5"></i>
+            Oldi
+          </div>
+          <!-- Crowd Dots Simulation -->
+          <div id="salon-dots" class="flex-1 px-3 flex flex-wrap gap-1.5 items-center justify-center">
+            <!-- Filled dynamically -->
+          </div>
+          <!-- Back -->
+          <div class="w-6 h-full bg-slate-200 rounded flex items-center justify-center text-[9px] font-bold text-slate-400">
+            Orqa
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex gap-2.5">
+        <button onclick="openReportModal(currentSelectedBusId)" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span id="modal-btn-confirm">Holatni yangilash</span>
+        </button>
+        <button onclick="closeBusModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl text-xs transition">
+          Yopish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crowdsource Report Modal ("I'm in this bus") -->
+  <div id="report-modal" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
+    <div class="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-6 duration-200">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-extrabold text-slate-900" id="report-title">Avtobusda qancha odam bor?</h3>
+        <button onclick="closeReportModal()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4" id="report-sub">Sizning birgina bahoingiz bekatda kutayotgan yuzlab toshkentliklarga yordam beradi!</p>
+
+      <!-- Select Route if not pre-selected -->
+      <div class="mb-4">
+        <label class="block text-xs font-bold text-slate-700 mb-1" id="report-route-label">Avtobus raqami:</label>
+        <select id="report-bus-select" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl p-2.5 font-bold focus:ring-2 focus:ring-emerald-500 outline-none">
+          <option value="28">№ 28 (Yutong E12)</option>
+          <option value="51">№ 51 (King Long)</option>
+          <option value="14">№ 14 (MAN A22)</option>
+          <option value="93">№ 93 (Yutong E12)</option>
+          <option value="24">№ 24 (Mercedes Conecto)</option>
+        </select>
+      </div>
+
+      <!-- 3 Big Reaction Buttons -->
+      <div class="grid grid-cols-3 gap-2.5 mb-5">
+        <button onclick="submitReport('low')" class="group p-3.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100 hover:border-emerald-500 text-center transition flex flex-col items-center">
+          <span class="text-3xl mb-1 transform group-hover:scale-125 transition">🟢</span>
+          <span class="text-xs font-black text-emerald-800" id="rep-opt-1">Bo'sh</span>
+          <span class="text-[10px] text-emerald-600 font-medium" id="rep-opt-1-sub">O'tirishga joy ko'p</span>
+        </button>
+
+        <button onclick="submitReport('med')" class="group p-3.5 rounded-2xl border-2 border-amber-200 bg-amber-50/50 hover:bg-amber-100 hover:border-amber-500 text-center transition flex flex-col items-center">
+          <span class="text-3xl mb-1 transform group-hover:scale-125 transition">🟡</span>
+          <span class="text-xs font-black text-amber-800" id="rep-opt-2">O'rtacha</span>
+          <span class="text-[10px] text-amber-600 font-medium" id="rep-opt-2-sub">Tik turish qulay</span>
+        </button>
+
+        <button onclick="submitReport('high')" class="group p-3.5 rounded-2xl border-2 border-red-200 bg-red-50/50 hover:bg-red-100 hover:border-red-500 text-center transition flex flex-col items-center">
+          <span class="text-3xl mb-1 transform group-hover:scale-125 transition">🔴</span>
+          <span class="text-xs font-black text-red-800" id="rep-opt-3">Tiqilinch</span>
+          <span class="text-[10px] text-red-600 font-medium" id="rep-opt-3-sub">Eshik yopilmayapti</span>
+        </button>
+      </div>
+
+      <!-- Gamification Reward Note -->
+      <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+          +15
+        </div>
+        <p class="text-[11px] text-indigo-900 leading-snug" id="report-reward-msg">
+          To'g'ri baholash uchun ATTO kartangizga <strong>15 ball</strong> bonus yoziladi!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-y-4">
+    <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-text">Rahmat! Ma'lumot yangilandi.</span>
+  </div>
+
+  <script>
+    // --- Tashkent Data Simulation ---
+    const TASHKENT_CENTER = [41.311081, 69.279737]; // Amir Temur Square
+    let currentLang = 'uz'; // 'uz' or 'ru'
+    let currentFilter = 'ALL';
+    let currentSelectedBusId = null;
+
+    // Multilingual Dictionary
+    const i18n = {
+      uz: {
+        subHeader: "Avtobuslarda bo'sh joylar radari",
+        adviceTitle: "⚡ Aqlli maslahat",
+        adviceTime: "Hozir",
+        adviceText: "<strong>28-avtobus</strong> tiqilinch (95% 🔴, 2 daq). Lekin 6 daqiqadan so'ng keladigan 28-avtobus <strong>bo'sh (25% 🟢)</strong> — kutishni tavsiya qilamiz!",
+        btnReport: "Men avtobusdaman!",
+        drawerTitle: "Yaqin bekat: <span class='text-emerald-600 font-extrabold'>Amir Temur Xiyoboni</span>",
+        drawerSub: "Avtobuslarning to'lalik darajasi real vaqtda",
+        allBtn: "Barchasi",
+        freeSeats: "Bo'sh o'rinlar",
+        eta: "Yetib kelishi",
+        confirmed: "Tasdiqlaganlar",
+        salonVisual: "Salondagi holat (Vizual):",
+        nextEmptier: "Keyingisi bo'shroq!",
+        updateState: "Holatni yangilash",
+        close: "Yopish",
+        crowdLow: "Bo'sh",
+        crowdMed: "O'rtacha",
+        crowdHigh: "Tiqilinch",
+        crowdLowDesc: "O'tirishga joy ko'p",
+        crowdMedDesc: "Tik turish qulay",
+        crowdHighDesc: "Eshik zo'rg'a yopilyapti",
+        reportTitle: "Avtobusda qancha odam bor?",
+        reportSub: "Sizning birgina bahoingiz bekatda kutayotgan yuzlab toshkentliklarga yordam beradi!",
+        busNum: "Avtobus raqami:",
+        reward: "To'g'ri baholash uchun <strong>+15 ball</strong> hisobingizga qo'shildi!",
+        thanksToast: "Rahmat! Ma'lumot tasdiqlandi va xaritada yangilandi.",
+        min: "daqiqa",
+        seatsCount: "ta joy"
+      },
+      ru: {
+        subHeader: "Радар свободных мест в автобусах",
+        adviceTitle: "⚡ Умный совет",
+        adviceTime: "Сейчас",
+        adviceText: "<strong>Автобус №28</strong> переполнен (95% 🔴, 2 мин). Но через 6 минут приедет <strong>полупустой (25% 🟢)</strong> — лучше подождать его!",
+        btnReport: "Я в автобусе!",
+        drawerTitle: "Остановка: <span class='text-emerald-600 font-extrabold'>Сквер Амира Темура</span>",
+        drawerSub: "Уровень загруженности в реальном времени",
+        allBtn: "Все",
+        freeSeats: "Свободно мест",
+        eta: "Прибытие через",
+        confirmed: "Подтвердили",
+        salonVisual: "Заполненность салона (Наглядно):",
+        nextEmptier: "Следующий свободнее!",
+        updateState: "Обновить данные",
+        close: "Закрыть",
+        crowdLow: "Свободно",
+        crowdMed: "Средне",
+        crowdHigh: "Битком",
+        crowdLowDesc: "Много сидячих мест",
+        crowdMedDesc: "Стоять свободно",
+        crowdHighDesc: "Консервная банка",
+        reportTitle: "Сколько людей в автобусе?",
+        reportSub: "Ваша отметка поможет сотням пассажиров на остановках прямо сейчас!",
+        busNum: "Номер маршрута:",
+        reward: "За отметку начислено <strong>+15 баллов</strong> на карту ATTO!",
+        thanksToast: "Спасибо! Данные обновлены на карте.",
+        min: "мин",
+        seatsCount: "мест"
+      }
+    };
+
+    // Realistic Tashkent Bus Fleet data
+    let buses = [
+      {
+        id: 'bus-28-1',
+        route: 28,
+        model: 'Yutong E12 (Электробус)',
+        destinationUz: "Ipak Yo'li metrosi ➔ Chorsu bozori",
+        destinationRu: "Метро Ипак Йули ➔ Рынок Чорсу",
+        lat: 41.3125,
+        lng: 69.2780,
+        bearing: 45,
+        occupancy: 95, // High
+        level: 'high',
+        freeSeats: 2,
+        etaMinutes: 2,
+        votes: 18,
+        direction: [0.0003, 0.0002]
+      },
+      {
+        id: 'bus-28-2',
+        route: 28,
+        model: 'Yutong E12 (Электробус)',
+        destinationUz: "Ipak Yo'li metrosi ➔ Chorsu bozori",
+        destinationRu: "Метро Ипак Йули ➔ Рынок Чорсу",
+        lat: 41.3060,
+        lng: 69.2710,
+        bearing: 45,
+        occupancy: 25, // Low (Recommended!)
+        level: 'low',
+        freeSeats: 28,
+        etaMinutes: 7,
+        votes: 9,
+        direction: [0.0002, 0.0002]
+      },
+      {
+        id: 'bus-51-1',
+        route: 51,
+        model: 'King Long XMQ6125',
+        destinationUz: "Yunusobod 12-mavze ➔ Toshkent vokzali",
+        destinationRu: "Юнусабад 12 ➔ Вокзал Ташкент",
+        lat: 41.3180,
+        lng: 69.2820,
+        bearing: 180,
+        occupancy: 60, // Medium
+        level: 'med',
+        freeSeats: 12,
+        etaMinutes: 4,
+        votes: 11,
+        direction: [-0.0002, -0.0001]
+      },
+      {
+        id: 'bus-14-1',
+        route: 14,
+        model: 'MAN A22 CNG',
+        destinationUz: "TTZ mavzesi ➔ Toshkent MUM",
+        destinationRu: "Массив ТТЗ ➔ Ташкент ЦУМ",
+        lat: 41.3100,
+        lng: 69.2890,
+        bearing: 270,
+        occupancy: 35, // Low
+        level: 'low',
+        freeSeats: 22,
+        etaMinutes: 5,
+        votes: 7,
+        direction: [-0.0001, -0.0003]
+      },
+      {
+        id: 'bus-93-1',
+        route: 93,
+        model: 'Yutong E12 (Электробус)',
+        destinationUz: "Qo'yliq 1-mavze ➔ Chilonzor 25-mavze",
+        destinationRu: "Массив Куйлюк 1 ➔ Чиланзар 25",
+        lat: 41.3040,
+        lng: 69.2830,
+        bearing: 315,
+        occupancy: 90, // High
+        level: 'high',
+        freeSeats: 1,
+        etaMinutes: 3,
+        votes: 21,
+        direction: [0.0002, -0.0002]
+      },
+      {
+        id: 'bus-24-1',
+        route: 24,
+        model: 'Mercedes-Benz Conecto',
+        destinationUz: "Qoraqamish 2/4 ➔ Toshkent vokzali",
+        destinationRu: "Каракамыш 2/4 ➔ Вокзал Ташкент",
+        lat: 41.3150,
+        lng: 69.2730,
+        bearing: 135,
+        occupancy: 55, // Med
+        level: 'med',
+        freeSeats: 14,
+        etaMinutes: 8,
+        votes: 8,
+        direction: [-0.0002, 0.0002]
+      }
+    ];
+
+    // --- Leaflet Map Init ---
+    let map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView(TASHKENT_CENTER, 14);
+
+    // OpenStreetMap clean tile layer (100% free, no API key required)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Stop Marker: Amir Temur Square
+    const stopIcon = L.divIcon({
+      className: 'stop-marker',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-emerald-500/20 animate-ping"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-white shadow-lg flex items-center justify-center text-white">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+          </div>
+        </div>
+      `,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+    L.marker(TASHKENT_CENTER, { icon: stopIcon }).addTo(map)
+      .bindPopup("<b>Amir Temur Xiyoboni beкати</b><br>Toshkent markazi");
+
+    // Bus Markers Map
+    let markers = {};
+
+    function getCrowdColor(level) {
+      if (level === 'low') return { bg: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100', dot: '#10b981' };
+      if (level === 'med') return { bg: 'bg-amber-500', text: 'text-amber-700', badge: 'bg-amber-100', dot: '#f59e0b' };
+      return { bg: 'bg-red-500', text: 'text-red-700', badge: 'bg-red-100', dot: '#ef4444' };
+    }
+
+    function createBusIcon(bus) {
+      const colors = getCrowdColor(bus.level);
+      const isHigh = bus.level === 'high' ? 'pulse-crowd-high' : '';
+      
+      return L.divIcon({
+        className: 'bus-marker-container',
+        html: `
+          <div class="relative flex flex-col items-center cursor-pointer group" onclick="selectBus('${bus.id}')">
+            <!-- Occupancy badge tag -->
+            <div class="absolute -top-6 px-1.5 py-0.5 rounded-full text-[9px] font-black shadow-md border border-white text-white ${colors.bg}">
+              ${bus.occupancy}%
+            </div>
+            
+            <!-- Bus badge -->
+            <div class="relative w-10 h-10 rounded-2xl ${colors.bg} ${isHigh} border-2 border-white shadow-xl flex items-center justify-center text-white font-black text-sm transition transform group-hover:scale-110">
+              ${bus.route}
+            </div>
+          </div>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+      });
+    }
+
+    function renderBusesOnMap() {
+      buses.forEach(bus => {
+        if (currentFilter !== 'ALL' && bus.route !== Number(currentFilter)) {
+          if (markers[bus.id]) {
+            map.removeLayer(markers[bus.id]);
+            delete markers[bus.id];
+          }
+          return;
+        }
+
+        const icon = createBusIcon(bus);
+        if (markers[bus.id]) {
+          markers[bus.id].setLatLng([bus.lat, bus.lng]);
+          markers[bus.id].setIcon(icon);
+        } else {
+          const marker = L.marker([bus.lat, bus.lng], { icon: icon }).addTo(map);
+          marker.on('click', () => selectBus(bus.id));
+          markers[bus.id] = marker;
+        }
+      });
+    }
+
+    // Bus movement animation loop (Simulating real-time motion)
+    setInterval(() => {
+      buses.forEach(bus => {
+        bus.lat += bus.direction[0] * 0.15;
+        bus.lng += bus.direction[1] * 0.15;
+
+        // Bounce back if too far from Tashkent center
+        const dist = Math.hypot(bus.lat - TASHKENT_CENTER[0], bus.lng - TASHKENT_CENTER[1]);
+        if (dist > 0.02) {
+          bus.direction[0] *= -1;
+          bus.direction[1] *= -1;
+        }
+      });
+      renderBusesOnMap();
+    }, 1500);
+
+    // Render Drawer List
+    function renderBusList() {
+      const listEl = document.getElementById('bus-list');
+      const filtered = buses.filter(b => currentFilter === 'ALL' || b.route === Number(currentFilter));
+      
+      // Sort: arriving soonest first
+      filtered.sort((a, b) => a.etaMinutes - b.etaMinutes);
+
+      listEl.innerHTML = filtered.map(bus => {
+        const colors = getCrowdColor(bus.level);
+        const langObj = i18n[currentLang];
+        const statusText = bus.level === 'low' ? langObj.crowdLow : (bus.level === 'med' ? langObj.crowdMed : langObj.crowdHigh);
+        const destination = currentLang === 'uz' ? bus.destinationUz : bus.destinationRu;
+
+        return `
+          <div onclick="selectBus('${bus.id}')" class="p-3 rounded-2xl border border-slate-100 bg-white hover:bg-slate-50 transition cursor-pointer flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl ${colors.bg} text-white font-black text-xl flex items-center justify-center shadow-md">
+                ${bus.route}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-800 text-sm">№ ${bus.route}</span>
+                  <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${colors.badge} ${colors.text}">
+                    ${bus.occupancy}% • ${statusText}
+                  </span>
+                </div>
+                <p class="text-[11px] text-slate-500 font-medium truncate max-w-[170px] sm:max-w-xs mt-0.5">
+                  ${destination}
+                </p>
+              </div>
+            </div>
+
+            <div class="text-right shrink-0">
+              <div class="text-sm font-black text-emerald-600">${bus.etaMinutes} ${langObj.min}</div>
+              <div class="text-[10px] text-slate-400 font-semibold">${bus.freeSeats} ${langObj.seatsCount}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Filter by route
+    function filterRoute(route) {
+      currentFilter = route;
+      document.querySelectorAll('.route-chip').forEach(btn => {
+        if (btn.getAttribute('data-route') === String(route)) {
+          btn.classList.add('bg-slate-900', 'text-white');
+          btn.classList.remove('bg-white', 'text-slate-700');
+        } else {
+          btn.classList.remove('bg-slate-900', 'text-white');
+          btn.classList.add('bg-white', 'text-slate-700');
+        }
+      });
+      renderBusesOnMap();
+      renderBusList();
+    }
+
+    // Select Bus and show detail modal
+    function selectBus(busId) {
+      const bus = buses.find(b => b.id === busId);
+      if (!bus) return;
+      currentSelectedBusId = bus.id;
+
+      // Pan to bus
+      map.flyTo([bus.lat, bus.lng], 15, { animate: true, duration: 0.8 });
+
+      const langObj = i18n[currentLang];
+      const colors = getCrowdColor(bus.level);
+
+      document.getElementById('modal-route-badge').innerText = bus.route;
+      document.getElementById('modal-route-badge').className = `w-14 h-14 rounded-2xl ${colors.bg} text-white font-black text-2xl flex items-center justify-center shadow-lg`;
+      document.getElementById('modal-route-name').innerText = `№ ${bus.route} ${currentLang === 'uz' ? "Yo'nalish" : "Маршрут"}`;
+      document.getElementById('modal-bus-model').innerText = bus.model;
+      document.getElementById('modal-destination').innerText = currentLang === 'uz' ? bus.destinationUz : bus.destinationRu;
+      
+      const statusText = bus.level === 'low' ? langObj.crowdLow : (bus.level === 'med' ? langObj.crowdMed : langObj.crowdHigh);
+      document.getElementById('modal-occupancy-badge').innerText = `${bus.occupancy}% • ${statusText}`;
+      document.getElementById('modal-occupancy-badge').className = `px-2.5 py-0.5 rounded-full text-xs font-extrabold ${colors.badge} ${colors.text}`;
+      
+      const bar = document.getElementById('modal-progress-bar');
+      bar.style.width = `${bus.occupancy}%`;
+      bar.className = `h-full rounded-full transition-all duration-500 ${colors.bg}`;
+
+      document.getElementById('modal-free-seats').innerText = `${bus.freeSeats} ${langObj.seatsCount}`;
+      document.getElementById('modal-eta').innerText = `${bus.etaMinutes} ${langObj.min}`;
+      document.getElementById('modal-votes').innerText = `${bus.votes} ${currentLang === 'uz' ? "kishi" : "чел"}`;
+
+      // Generate salon dots
+      const dotsContainer = document.getElementById('salon-dots');
+      dotsContainer.innerHTML = '';
+      const totalCapacity = 24;
+      const occupiedCount = Math.round((bus.occupancy / 100) * totalCapacity);
+      for (let i = 0; i < totalCapacity; i++) {
+        const dot = document.createElement('div');
+        dot.className = `w-2.5 h-2.5 rounded-full ${i < occupiedCount ? colors.bg : 'bg-slate-300'}`;
+        dotsContainer.appendChild(dot);
+      }
+
+      document.getElementById('bus-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeBusModal() {
+      document.getElementById('bus-modal').classList.add('hidden');
+    }
+
+    // Crowdsource Modal
+    function openReportModal(busId) {
+      if (busId) {
+        const bus = buses.find(b => b.id === busId);
+        if (bus) {
+          document.getElementById('report-bus-select').value = bus.route;
+        }
+      }
+      document.getElementById('report-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeReportModal() {
+      document.getElementById('report-modal').classList.add('hidden');
+    }
+
+    // Submit user report
+    function submitReport(level) {
+      const selectedRoute = Number(document.getElementById('report-bus-select').value);
+      const targetBus = buses.find(b => b.route === selectedRoute);
+
+      if (targetBus) {
+        targetBus.level = level;
+        targetBus.votes += 1;
+        if (level === 'low') {
+          targetBus.occupancy = 25;
+          targetBus.freeSeats = 26;
+        } else if (level === 'med') {
+          targetBus.occupancy = 65;
+          targetBus.freeSeats = 10;
+        } else {
+          targetBus.occupancy = 96;
+          targetBus.freeSeats = 1;
+        }
+      }
+
+      closeReportModal();
+      closeBusModal();
+      renderBusesOnMap();
+      renderBusList();
+
+      // Show rewarding toast
+      showToast(i18n[currentLang].thanksToast);
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').innerText = text;
+      toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 3500);
+    }
+
+    function dismissBanner() {
+      document.getElementById('smart-banner').style.display = 'none';
+    }
+
+    function toggleDrawer() {
+      const sheet = document.getElementById('bottom-sheet');
+      sheet.classList.toggle('translate-y-36');
+    }
+
+    function recenterMap() {
+      map.flyTo(TASHKENT_CENTER, 14, { animate: true });
+    }
+
+    // Multilingual Switcher
+    function toggleLang() {
+      currentLang = currentLang === 'uz' ? 'ru' : 'uz';
+      const langBtn = document.getElementById('lang-btn');
+      langBtn.innerText = currentLang === 'uz' ? 'UZ 🇺🇿' : 'RU 🇷🇺';
+
+      const t = i18n[currentLang];
+      document.getElementById('sub-header-text').innerText = t.subHeader;
+      document.getElementById('banner-title').innerText = t.adviceTitle;
+      document.getElementById('banner-time').innerText = t.adviceTime;
+      document.getElementById('banner-content').innerHTML = t.adviceText;
+      document.getElementById('btn-report-label').innerText = t.btnReport;
+      document.getElementById('drawer-title').innerHTML = t.drawerTitle;
+      document.getElementById('drawer-sub').innerText = t.drawerSub;
+      document.getElementById('modal-occupancy-label').innerText = currentLang === 'uz' ? "Avtobus to'laligi:" : "Заполненность:";
+      document.getElementById('modal-stat-seats').innerText = t.freeSeats;
+      document.getElementById('modal-stat-eta').innerText = t.eta;
+      document.getElementById('modal-stat-votes').innerText = t.confirmed;
+      document.getElementById('modal-salon-title').innerText = t.salonVisual;
+      document.getElementById('modal-salon-rec').innerText = t.nextEmptier;
+      document.getElementById('modal-btn-confirm').innerText = t.updateState;
+      document.getElementById('report-title').innerText = t.reportTitle;
+      document.getElementById('report-sub').innerText = t.reportSub;
+      document.getElementById('report-route-label').innerText = t.busNum;
+      document.getElementById('rep-opt-1').innerText = t.crowdLow;
+      document.getElementById('rep-opt-1-sub').innerText = t.crowdLowDesc;
+      document.getElementById('rep-opt-2').innerText = t.crowdMed;
+      document.getElementById('rep-opt-2-sub').innerText = t.crowdMedDesc;
+      document.getElementById('rep-opt-3').innerText = t.crowdHigh;
+      document.getElementById('rep-opt-3-sub').innerText = t.crowdHighDesc;
+      document.getElementById('report-reward-msg').innerHTML = t.reward;
+
+      renderBusList();
+    }
+
+    // Initial setup
+    renderBusesOnMap();
+    renderBusList();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
