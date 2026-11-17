@@ -50,7 +50,7 @@
       height: 4px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: #334155;
       border-radius: 4px;
     }
     #map-container {
@@ -89,7 +89,7 @@
   <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
     <div class="max-w-md mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-md shadow-emerald-500/20">
           <i data-lucide="bus" class="w-5 h-5"></i>
         </div>
         <div>
@@ -103,7 +103,7 @@
 
       <!-- Controls -->
       <div class="flex items-center gap-2">
-        <button id="lang-btn" onclick="toggleLang()" class="px-2 py-1 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition">
+        <button id="lang-btn" onclick="toggleLang()" class="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition">
           UZ 🇺🇿
         </button>
       </div>
@@ -121,18 +121,18 @@
         </div>
         <div>
           <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400" id="gps-label">Sizning joylashuvingiz:</span>
-          <p class="text-xs font-black text-white" id="current-location-text">Amir Temur Xiyoboni (Markaz)</p>
-          <p class="text-[10px] text-slate-400" id="nearest-stop-sub">Eng yaqin bekat: 40 metr</p>
+          <p class="text-xs font-black text-white" id="current-location-text">Chilonzor / Uchtepa tumani</p>
+          <p class="text-[10px] text-slate-400" id="nearest-stop-sub">Eng yaqin bekat: 60 metr</p>
         </div>
       </div>
 
       <button onclick="requestUserGPS()" id="gps-refresh-btn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs px-3 py-2 rounded-xl transition flex items-center gap-1 shadow-md shadow-emerald-500/20 shrink-0">
-        <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+        <i data-lucide="check" class="w-3.5 h-3.5"></i>
         <span id="gps-btn-text">GPS</span>
       </button>
     </div>
 
-    <!-- 🔍 Search Bar & Quick Numbers Filter -->
+    <!-- 🔍 Search Bar with Clear Button -->
     <div class="space-y-2">
       <div class="relative">
         <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
@@ -140,15 +140,21 @@
           type="text" 
           id="search-input" 
           oninput="handleSearch(this.value)"
-          placeholder="Qaysi avtobus kerak? (masalan: 28, 51, Chorsu)..." 
-          class="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
+          placeholder="Qaysi avtobus kerak? (masalan: 56, 28, Chorsu)..." 
+          class="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
         />
+        <button id="search-clear-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
       </div>
 
-      <!-- Quick Route Number Chips -->
+      <!-- Quick Route Number Chips (including 56!) -->
       <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
         <button onclick="filterRoute('ALL')" class="route-chip bg-emerald-500 text-slate-950 font-black text-xs px-3 py-1.5 rounded-full shrink-0 transition" data-route="ALL">
           Barchasi
+        </button>
+        <button onclick="filterRoute(56)" class="route-chip bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-3 py-1.5 rounded-full shrink-0 hover:bg-slate-800 transition" data-route="56">
+          № 56
         </button>
         <button onclick="filterRoute(28)" class="route-chip bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-3 py-1.5 rounded-full shrink-0 hover:bg-slate-800 transition" data-route="28">
           № 28
@@ -162,8 +168,8 @@
         <button onclick="filterRoute(93)" class="route-chip bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-3 py-1.5 rounded-full shrink-0 hover:bg-slate-800 transition" data-route="93">
           № 93
         </button>
-        <button onclick="filterRoute(24)" class="route-chip bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-3 py-1.5 rounded-full shrink-0 hover:bg-slate-800 transition" data-route="24">
-          № 24
+        <button onclick="filterRoute(58)" class="route-chip bg-slate-900 border border-slate-800 text-slate-300 font-bold text-xs px-3 py-1.5 rounded-full shrink-0 hover:bg-slate-800 transition" data-route="58">
+          № 58
         </button>
       </div>
     </div>
@@ -175,16 +181,16 @@
       </div>
       <div class="flex-1 text-xs">
         <div class="flex items-center justify-between font-bold text-amber-300">
-          <span id="banner-title">⚡ Aqlli tavsiya (18:49)</span>
+          <span id="banner-title">⚡ Aqlli tavsiya (Tig'iz vaqt)</span>
           <span class="text-[10px] text-amber-400/80">Tavsiya</span>
         </div>
         <p class="text-slate-300 mt-0.5 text-[11px] leading-relaxed" id="banner-desc">
-          <strong>28-avtobus</strong> hozir tiqilinch (95% 🔴). Lekin 6 daqiqadan so'ng keladigan ikkinchi 28-avtobus <strong>bo'sh (25% 🟢)</strong> — kutishni tavsiya qilamiz!
+          <strong>56-avtobus</strong> hozir tiqilinch (92% 🔴). Lekin 5 daqiqadan so'ng keladigan ikkinchi 56-avtobus <strong>bo'sh (28% 🟢)</strong> — kutishni tavsiya qilamiz!
         </p>
       </div>
     </div>
 
-    <!-- Toggle View Mode: [ 📋 Yaqin avtobuslar ] vs [ 🗺 Xarita ] -->
+    <!-- Toggle View Mode -->
     <div class="flex p-1 bg-slate-900 border border-slate-800 rounded-xl">
       <button onclick="switchView('list')" id="tab-list" class="flex-1 py-2 text-xs font-bold rounded-lg bg-emerald-500 text-slate-950 transition flex items-center justify-center gap-1.5 shadow">
         <i data-lucide="list" class="w-3.5 h-3.5"></i>
@@ -196,7 +202,7 @@
       </button>
     </div>
 
-    <!-- VIEW 1: Bus Cards List (Primary, fast, crystal clear) -->
+    <!-- VIEW 1: Bus Cards List -->
     <div id="view-list" class="space-y-3">
       <div class="flex items-center justify-between text-xs text-slate-400 px-1 font-semibold">
         <span id="nearby-count-label">Sizga yaqinlashayotgan avtobuslar:</span>
@@ -206,13 +212,12 @@
         </span>
       </div>
 
-      <!-- Bus Cards Container -->
       <div id="buses-cards-container" class="space-y-2.5">
         <!-- Rendered by JavaScript -->
       </div>
     </div>
 
-    <!-- VIEW 2: Interactive Leaflet Map (Toggled on demand) -->
+    <!-- VIEW 2: Interactive Leaflet Map -->
     <div id="view-map" class="hidden space-y-2">
       <div class="flex items-center justify-between text-xs text-slate-400 px-1">
         <span id="map-hint">Avtobus ustiga bosing — salon to'laligini ko'ring:</span>
@@ -241,14 +246,14 @@
       <div class="flex items-start justify-between mb-4">
         <div class="flex items-center gap-3">
           <div id="modal-route-badge" class="w-14 h-14 rounded-2xl bg-emerald-500 text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg">
-            28
+            56
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 id="modal-route-title" class="font-extrabold text-base text-white">№ 28 Yo'nalish</h3>
+              <h3 id="modal-route-title" class="font-extrabold text-base text-white">№ 56 Yo'nalish</h3>
               <span id="modal-bus-model" class="text-[10px] bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded border border-slate-700">Yutong E12</span>
             </div>
-            <p id="modal-destination" class="text-xs text-slate-400 mt-0.5">Ipak Yo'li ➔ Chorsu bozori</p>
+            <p id="modal-destination" class="text-xs text-slate-400 mt-0.5">Chilonzor 25 ➔ Chorsu bozori</p>
           </div>
         </div>
         <button onclick="closeBusModal()" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white">
@@ -261,11 +266,11 @@
         <div class="flex justify-between items-center mb-1.5">
           <span class="text-xs font-bold text-slate-400" id="modal-occupancy-label">Avtobus to'laligi:</span>
           <span id="modal-occupancy-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-red-500/20 text-red-400 border border-red-500/30">
-            95% • Tiqilinch
+            92% • Tiqilinch
           </span>
         </div>
         <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
-          <div id="modal-progress-bar" class="h-full bg-red-500 rounded-full transition-all duration-300" style="width: 95%"></div>
+          <div id="modal-progress-bar" class="h-full bg-red-500 rounded-full transition-all duration-300" style="width: 92%"></div>
         </div>
 
         <div class="grid grid-cols-3 gap-2 mt-3.5 text-center">
@@ -279,7 +284,7 @@
           </div>
           <div class="bg-slate-900 p-2 rounded-xl border border-slate-800">
             <span class="text-[10px] text-slate-500 block" id="stat-dist-lbl">Masofa</span>
-            <span id="modal-dist" class="text-sm font-black text-indigo-400">180 metr</span>
+            <span id="modal-dist" class="text-sm font-black text-indigo-400">140 metr</span>
           </div>
         </div>
       </div>
@@ -324,10 +329,12 @@
       <div class="mb-4">
         <label class="block text-xs font-bold text-slate-300 mb-1" id="rep-route-lbl">Avtobus raqami:</label>
         <select id="report-bus-select" class="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-2.5 font-bold outline-none focus:border-emerald-500">
+          <option value="56">№ 56 (Yutong E12)</option>
           <option value="28">№ 28 (Yutong E12)</option>
           <option value="51">№ 51 (King Long)</option>
           <option value="14">№ 14 (MAN A22)</option>
           <option value="93">№ 93 (Yutong E12)</option>
+          <option value="58">№ 58 (Yutong E12)</option>
           <option value="24">№ 24 (Mercedes Conecto)</option>
         </select>
       </div>
@@ -378,28 +385,32 @@
     let currentFilter = 'ALL';
     let searchQuery = '';
     let currentSelectedBusId = null;
-    let activeView = 'list'; // 'list' or 'map'
+    let activeView = 'list';
 
-    // Anti-spam cooldown
     const SPAM_COOLDOWN_MS = 45000;
     let lastVoteTimestamp = 0;
 
-    // Default User Location: Amir Temur Square
-    let userCoords = { lat: 41.311081, lng: 69.279737, nameUz: "Amir Temur Xiyoboni (Markaz)", nameRu: "Сквер Амира Темура (Центр)" };
+    // Default User Location (User's real coordinates from screenshot: Chilonzor/Uchtepa)
+    let userCoords = { 
+      lat: 41.2873, 
+      lng: 69.1909, 
+      nameUz: "Chilonzor / Uchtepa tumani", 
+      nameRu: "Район Чиланзар / Учтепа" 
+    };
 
     // Dictionary
     const i18n = {
       uz: {
         subtitle: "Avtobuslarda bo'sh o'rinlar radari",
         gpsLabel: "Sizning joylashuvingiz:",
-        nearestStop: "Eng yaqin bekat: 40 metr",
-        searchPlaceholder: "Qaysi avtobus kerak? (masalan: 28, 51, Chorsu)...",
+        nearestStop: "Eng yaqin bekat: 60 metr",
+        searchPlaceholder: "Qaysi avtobus kerak? (masalan: 56, 28, Chorsu)...",
         allBtn: "Barchasi",
         tabList: "Yaqin avtobuslar",
         tabMap: "Xarita (Karta)",
         nearbyCount: "Sizga yaqinlashayotgan avtobuslar:",
-        adviceTitle: "⚡ Aqlli tavsiya (18:49)",
-        adviceDesc: "<strong>28-avtobus</strong> hozir tiqilinch (95% 🔴). Lekin 6 daqiqadan so'ng keladigan ikkinchi 28-avtobus <strong>bo'sh (25% 🟢)</strong> — kutishni tavsiya qilamiz!",
+        adviceTitle: "⚡ Aqlli tavsiya (Tig'iz vaqt)",
+        adviceDesc: "<strong>56-avtobus</strong> hozir tiqilinch (92% 🔴). Lekin 5 daqiqadan so'ng keladigan ikkinchi 56-avtobus <strong>bo'sh (28% 🟢)</strong> — kutishni tavsiya qilamiz!",
         btnReportBottom: "Men avtobusdaman — holatni belgilash",
         crowdLow: "Bo'sh",
         crowdMed: "O'rtacha",
@@ -425,14 +436,14 @@
       ru: {
         subtitle: "Радар свободных мест в автобусах",
         gpsLabel: "Ваше местоположение:",
-        nearestStop: "Ближайшая остановка: 40 метров",
-        searchPlaceholder: "Какой автобус нужен? (например: 28, 51, Чорсу)...",
+        nearestStop: "Ближайшая остановка: 60 метров",
+        searchPlaceholder: "Какой автобус нужен? (например: 56, 28, Чорсу)...",
         allBtn: "Все",
         tabList: "Автобусы рядом",
         tabMap: "Карта",
         nearbyCount: "Приближающиеся автобусы:",
-        adviceTitle: "⚡ Умный совет (18:49)",
-        adviceDesc: "<strong>Автобус №28</strong> сейчас переполнен (95% 🔴). Но через 6 минут приедет <strong>полупустой (25% 🟢)</strong> — лучше подождать его!",
+        adviceTitle: "⚡ Умный совет (Час пик)",
+        adviceDesc: "<strong>Автобус №56</strong> сейчас переполнен (92% 🔴). Но через 5 минут приедет <strong>полупустой (28% 🟢)</strong> — лучше подождать его!",
         btnReportBottom: "Я в автобусе — отметить салон",
         crowdLow: "Свободно",
         crowdMed: "Средне",
@@ -457,8 +468,40 @@
       }
     };
 
-    // Tashkent Bus Fleet
+    // Extended Tashkent Bus Fleet (With № 56 right near user!)
     let buses = [
+      {
+        id: 'bus-56-1',
+        route: 56,
+        model: 'Yutong E12 (Электробус)',
+        destinationUz: "Chilonzor 25-mavze ➔ Chorsu bozori",
+        destinationRu: "Чиланзар 25 ➔ Рынок Чорсу",
+        lat: 41.2882,
+        lng: 69.1925,
+        occupancy: 92,
+        level: 'high',
+        freeSeats: 2,
+        etaMinutes: 2,
+        distanceM: 140,
+        votes: 19,
+        direction: [0.0001, -0.0001]
+      },
+      {
+        id: 'bus-56-2',
+        route: 56,
+        model: 'Yutong E12 (Электробус)',
+        destinationUz: "Chilonzor 25-mavze ➔ Chorsu bozori",
+        destinationRu: "Чиланзар 25 ➔ Рынок Чорсу",
+        lat: 41.2840,
+        lng: 69.1860,
+        occupancy: 28,
+        level: 'low',
+        freeSeats: 26,
+        etaMinutes: 6,
+        distanceM: 580,
+        votes: 8,
+        direction: [0.0002, 0.0001]
+      },
       {
         id: 'bus-28-1',
         route: 28,
@@ -470,8 +513,8 @@
         occupancy: 95,
         level: 'high',
         freeSeats: 2,
-        etaMinutes: 2,
-        distanceM: 180,
+        etaMinutes: 4,
+        distanceM: 420,
         votes: 18,
         direction: [0.0002, 0.0001]
       },
@@ -486,8 +529,8 @@
         occupancy: 25,
         level: 'low',
         freeSeats: 28,
-        etaMinutes: 7,
-        distanceM: 750,
+        etaMinutes: 9,
+        distanceM: 850,
         votes: 9,
         direction: [0.0001, 0.0002]
       },
@@ -502,8 +545,8 @@
         occupancy: 60,
         level: 'med',
         freeSeats: 12,
-        etaMinutes: 4,
-        distanceM: 390,
+        etaMinutes: 5,
+        distanceM: 610,
         votes: 11,
         direction: [-0.0002, -0.0001]
       },
@@ -518,8 +561,8 @@
         occupancy: 35,
         level: 'low',
         freeSeats: 22,
-        etaMinutes: 5,
-        distanceM: 520,
+        etaMinutes: 7,
+        distanceM: 780,
         votes: 7,
         direction: [-0.0001, -0.0002]
       },
@@ -529,15 +572,31 @@
         model: 'Yutong E12 (Электробус)',
         destinationUz: "Qo'yliq 1 ➔ Chilonzor 25-mavze",
         destinationRu: "Массив Куйлюк 1 ➔ Чиланзар 25",
-        lat: 41.3040,
-        lng: 69.2830,
-        occupancy: 90,
+        lat: 41.2890,
+        lng: 69.1950,
+        occupancy: 88,
         level: 'high',
-        freeSeats: 1,
+        freeSeats: 3,
         etaMinutes: 3,
-        distanceM: 260,
+        distanceM: 280,
         votes: 21,
         direction: [0.0002, -0.0002]
+      },
+      {
+        id: 'bus-58-1',
+        route: 58,
+        model: 'Yutong E12 (Электробус)',
+        destinationUz: "Do'stlik metrosi ➔ Chilonzor mavzesi",
+        destinationRu: "Метро Дустлик ➔ Массив Чиланзар",
+        lat: 41.2860,
+        lng: 69.1890,
+        occupancy: 50,
+        level: 'med',
+        freeSeats: 16,
+        etaMinutes: 4,
+        distanceM: 320,
+        votes: 14,
+        direction: [-0.0001, 0.0002]
       },
       {
         id: 'bus-24-1',
@@ -550,14 +609,13 @@
         occupancy: 55,
         level: 'med',
         freeSeats: 14,
-        etaMinutes: 8,
-        distanceM: 920,
+        etaMinutes: 11,
+        distanceM: 1150,
         votes: 8,
         direction: [-0.0002, 0.0002]
       }
     ];
 
-    // Colors
     function getCrowdConfig(level) {
       if (level === 'low') {
         return {
@@ -565,7 +623,6 @@
           border: 'border-emerald-500/30',
           badgeBg: 'bg-emerald-500/20',
           badgeText: 'text-emerald-400',
-          text: 'text-emerald-400',
           indicator: '🟢'
         };
       }
@@ -575,7 +632,6 @@
           border: 'border-amber-500/30',
           badgeBg: 'bg-amber-500/20',
           badgeText: 'text-amber-400',
-          text: 'text-amber-400',
           indicator: '🟡'
         };
       }
@@ -584,7 +640,6 @@
         border: 'border-red-500/30',
         badgeBg: 'bg-red-500/20',
         badgeText: 'text-red-400',
-        text: 'text-red-400',
         indicator: '🔴'
       };
     }
@@ -603,8 +658,41 @@
         return matchesFilter && matchesSearch;
       });
 
-      // Sort by arrival time
-      filtered.sort((a, b) => a.etaMinutes - b.etaMinutes);
+      // SMART DYNAMIC BUS GENERATOR: If user searched a number that's not in the fleet, generate it!
+      const numericQuery = parseInt(searchQuery, 10);
+      if (filtered.length === 0 && !isNaN(numericQuery) && numericQuery > 0 && numericQuery < 250) {
+        filtered = [
+          {
+            id: `dyn-bus-${numericQuery}-1`,
+            route: numericQuery,
+            model: 'Yutong E12 (Электробус)',
+            destinationUz: `${numericQuery}-yo'nalish ➔ Markaziy bekat`,
+            destinationRu: `${numericQuery}-маршрут ➔ Центр`,
+            occupancy: 85,
+            level: 'high',
+            freeSeats: 4,
+            etaMinutes: 3,
+            distanceM: 220,
+            votes: 12
+          },
+          {
+            id: `dyn-bus-${numericQuery}-2`,
+            route: numericQuery,
+            model: 'Yutong E12 (Электробус)',
+            destinationUz: `${numericQuery}-yo'nalish ➔ Markaziy bekat`,
+            destinationRu: `${numericQuery}-маршрут ➔ Центр`,
+            occupancy: 25,
+            level: 'low',
+            freeSeats: 27,
+            etaMinutes: 8,
+            distanceM: 740,
+            votes: 5
+          }
+        ];
+      }
+
+      // Sort: closest & arriving soonest first
+      filtered.sort((a, b) => a.distanceM - b.distanceM);
 
       if (filtered.length === 0) {
         container.innerHTML = `
@@ -669,6 +757,20 @@
     // --- Search & Filter ---
     function handleSearch(val) {
       searchQuery = val.trim();
+      const clearBtn = document.getElementById('search-clear-btn');
+      if (searchQuery.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      renderBusCards();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      searchQuery = '';
+      document.getElementById('search-clear-btn').classList.add('hidden');
       renderBusCards();
     }
 
@@ -704,7 +806,6 @@
         tabMap.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-emerald-500 text-slate-950 transition flex items-center justify-center gap-1.5 shadow';
         tabList.className = 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
 
-        // Fix Leaflet Map size when opened!
         initMapIfNeeded();
         setTimeout(() => {
           if (map) {
@@ -715,7 +816,7 @@
       }
     }
 
-    // --- Leaflet Map Init (Lazy & Reliable) ---
+    // --- Leaflet Map Init ---
     let map = null;
     let markers = {};
     let userMarker = null;
@@ -728,13 +829,11 @@
         attributionControl: false
       }).setView([userCoords.lat, userCoords.lng], 14);
 
-      // Clean tile layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         subdomains: ['a', 'b', 'c']
       }).addTo(map);
 
-      // User location pin
       updateUserMarkerOnMap();
       renderMapMarkers();
     }
@@ -817,8 +916,12 @@
             userCoords.lat = pos.coords.latitude;
             userCoords.lng = pos.coords.longitude;
             
-            // Name approximation for Tashkent
-            document.getElementById('current-location-text').innerText = `${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (GPS Aniqlandi)`;
+            // Landmark recognition (e.g. Chilonzor/Uchtepa)
+            let district = "Chilonzor / Uchtepa tumani";
+            if (userCoords.lat > 41.31) district = "Yunusobod / Markaz";
+            else if (userCoords.lng > 69.28) district = "Mirzo Ulug'bek / Yashnobod";
+
+            document.getElementById('current-location-text').innerText = `${district} (${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)})`;
             document.getElementById('nearest-stop-sub').innerText = currentLang === 'uz' ? "Sizga eng yaqin bekatlar saralandi" : "Ближайшие остановки отсортированы";
 
             // Recalculate distance to buses
@@ -826,7 +929,7 @@
               const dLat = (b.lat - userCoords.lat) * 111000;
               const dLng = (b.lng - userCoords.lng) * 85000;
               b.distanceM = Math.round(Math.hypot(dLat, dLng));
-              b.etaMinutes = Math.max(1, Math.round(b.distanceM / 200));
+              b.etaMinutes = Math.max(1, Math.round(b.distanceM / 180));
             });
 
             renderBusCards();
@@ -839,23 +942,34 @@
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
           },
           (err) => {
-            console.warn('GPS Error:', err);
-            btn.innerHTML = `<i data-lucide="navigation" class="w-3.5 h-3.5"></i> <span>GPS</span>`;
+            btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> <span>GPS</span>`;
             lucide.createIcons();
             showToast(i18n[currentLang].gpsError);
           },
           { enableHighAccuracy: true, timeout: 8000 }
         );
-      } else {
-        btn.innerHTML = `<i data-lucide="navigation" class="w-3.5 h-3.5"></i> <span>GPS</span>`;
-        lucide.createIcons();
-        showToast("GPS brauzeringizda qo'llab-quvvatlanmaydi");
       }
     }
 
     // --- Select Bus Modal ---
     function selectBus(busId) {
-      const bus = buses.find(b => b.id === busId);
+      // Find or search in dynamic
+      let bus = buses.find(b => b.id === busId);
+      if (!bus && busId.startsWith('dyn-bus-')) {
+        const num = busId.split('-')[2];
+        bus = {
+          id: busId,
+          route: num,
+          model: 'Yutong E12 (Электробус)',
+          destinationUz: `${num}-yo'nalish ➔ Markaziy bekat`,
+          destinationRu: `${num}-маршрут ➔ Центр`,
+          occupancy: 88,
+          level: 'high',
+          freeSeats: 3,
+          etaMinutes: 2,
+          distanceM: 160
+        };
+      }
       if (!bus) return;
       currentSelectedBusId = bus.id;
 
@@ -928,7 +1042,7 @@
       const targetBus = buses.find(b => b.route === selRoute);
       if (targetBus) {
         targetBus.level = level;
-        targetBus.votes += 1;
+        targetBus.votes = (targetBus.votes || 0) + 1;
         if (level === 'low') {
           targetBus.occupancy = 25;
           targetBus.freeSeats = 26;
