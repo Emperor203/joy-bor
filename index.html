@@ -8,6 +8,8 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -343,6 +345,24 @@
   </div>
 
   <script>
+    // --- Telegram WebApp Integration & Anti-Spam ---
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.enableClosingConfirmation?.();
+      
+      // Auto-detect Telegram user language
+      const userLang = tg.initDataUnsafe?.user?.language_code;
+      if (userLang === 'ru' && currentLang !== 'ru') {
+        toggleLang();
+      }
+    }
+
+    // Anti-Spam Rate Limiter (1 vote per 45 seconds per user)
+    const SPAM_COOLDOWN_MS = 45000;
+    let lastVoteTimestamp = 0;
+
     // --- Tashkent Data Simulation ---
     const TASHKENT_CENTER = [41.311081, 69.279737]; // Amir Temur Square
     let currentLang = 'uz'; // 'uz' or 'ru'
@@ -736,8 +756,19 @@
       document.getElementById('report-modal').classList.add('hidden');
     }
 
-    // Submit user report
+    // Submit user report with Anti-Spam check & Haptics
     function submitReport(level) {
+      const now = Date.now();
+      if (now - lastVoteTimestamp < SPAM_COOLDOWN_MS) {
+        const remainingSec = Math.ceil((SPAM_COOLDOWN_MS - (now - lastVoteTimestamp)) / 1000);
+        showToast(currentLang === 'uz' 
+          ? `⚠️ Spamdan himoya: iltimos, ${remainingSec} soniya kuting!` 
+          : `⚠️ Антиспам: пожалуйста, подождите ещё ${remainingSec} сек!`);
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+        return;
+      }
+      lastVoteTimestamp = now;
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       const selectedRoute = Number(document.getElementById('report-bus-select').value);
       const targetBus = buses.find(b => b.route === selectedRoute);
 
