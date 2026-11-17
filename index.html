@@ -57,9 +57,15 @@
       -webkit-tap-highlight-color: transparent;
     }
     #map {
-      height: 100vh;
-      width: 100vw;
-      z-index: 10;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: #f8fafc;
     }
     .leaflet-control-zoom, .leaflet-control-attribution {
       display: none !important;
@@ -539,11 +545,27 @@
       attributionControl: false
     }).setView(TASHKENT_CENTER, 14);
 
-    // OpenStreetMap clean tile layer (100% free, no API key required)
+    // Clean tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+      subdomains: ['a', 'b', 'c'],
+      attribution: false
     }).addTo(map);
+
+    // Force map resize for Telegram WebApp / Mobile Viewport
+    function refreshMapSize() {
+      if (map) {
+        map.invalidateSize();
+        map.setView(TASHKENT_CENTER, 14, { animate: false });
+      }
+    }
+    setTimeout(refreshMapSize, 150);
+    setTimeout(refreshMapSize, 500);
+    setTimeout(refreshMapSize, 1200);
+    window.addEventListener('resize', refreshMapSize);
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.onEvent('viewportChanged', refreshMapSize);
+    }
 
     // Stop Marker: Amir Temur Square
     const stopIcon = L.divIcon({
